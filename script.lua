@@ -1,89 +1,90 @@
--- Death Ball Improved
+-- Universal Death Ball Auto Parry
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local VIM = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
-
--- SETTINGS
-local settings = {
-AutoParry = true,
-Prediction = true,
-BaseDistance = 20,
-VelocityMultiplier = 0.4
-}
-
--- Character handler
 local hrp
 
+-- CONFIG
+local BASE_DISTANCE = 20
+local SPEED_MULT = 0.45
+local PREDICT_TIME = 0.18
+
+-- update character
 local function updateChar()
     local char = player.Character or player.CharacterAdded:Wait()
     hrp = char:WaitForChild("HumanoidRootPart")
 end
 
 updateChar()
-
 player.CharacterAdded:Connect(updateChar)
 
--- BALL FINDER
+-- detect ball automatically
 local function getBall()
 
-for _,v in pairs(workspace:GetChildren()) do
+    local fastest
+    local speed = 0
 
-if v:IsA("Part") and string.find(v.Name:lower(),"ball") then
-return v
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+
+            local vel = v.AssemblyLinearVelocity or v.Velocity
+            local mag = vel.Magnitude
+
+            if mag > speed and mag > 10 then
+                speed = mag
+                fastest = v
+            end
+
+        end
+    end
+
+    return fastest
 end
 
-end
-
-end
-
--- PREDICTION
-local function predict(ball)
-
-if not settings.Prediction then
-return ball.Position
-end
-
-return ball.Position + ball.Velocity * 0.15
-
-end
-
--- PARRY
+-- parry
 local function parry()
 
-VIM:SendMouseButtonEvent(0,0,0,true,game,0)
-task.wait()
-VIM:SendMouseButtonEvent(0,0,0,false,game,0)
+    VIM:SendMouseButtonEvent(0,0,0,true,game,0)
+    task.wait()
+    VIM:SendMouseButtonEvent(0,0,0,false,game,0)
 
 end
 
--- LOOP
+-- main loop
 RunService.RenderStepped:Connect(function()
 
-if not settings.AutoParry then return end
-if not hrp then return end
+    if not hrp then return end
 
-local ball = getBall()
-if not ball then return end
+    local ball = getBall()
+    if not ball then return end
 
-local vel = ball.Velocity
-if vel.Magnitude == 0 then return end
+    local vel = ball.AssemblyLinearVelocity or ball.Velocity
+    local speed = vel.Magnitude
 
-local predicted = predict(ball)
+    if speed < 10 then return end
 
-local distance = (predicted - hrp.Position).Magnitude
+    -- predicted position
+    local predicted = ball.Position + vel * PREDICT_TIME
 
-local dynamic = settings.BaseDistance + (vel.Magnitude * settings.VelocityMultiplier)
+    local distance = (predicted - hrp.Position).Magnitude
 
-local direction = (hrp.Position - ball.Position).Unit
-local dot = vel.Unit:Dot(direction)
+    -- dynamic range
+    local range = BASE_DISTANCE + (speed * SPEED_MULT)
 
-if distance <= dynamic and dot > 0.35 then
+    -- check direction
+    local toPlayer = (hrp.Position - ball.Position).Unit
+    local dot = vel.Unit:Dot(toPlayer)
 
-parry()
+    -- curve protection
+    if speed > 120 then
+        range = range + 8
+    end
 
-end
+    if dot > 0.2 and distance <= range then
+        parry()
+    end
 
 end)
