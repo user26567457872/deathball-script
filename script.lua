@@ -1,4 +1,4 @@
--- Universal Death Ball Auto Parry
+-- Stable Death Ball Auto Parry
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,10 +7,9 @@ local VIM = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 local hrp
 
--- CONFIG
 local BASE_DISTANCE = 20
 local SPEED_MULT = 0.45
-local PREDICT_TIME = 0.18
+local PREDICT = 0.16
 
 -- update character
 local function updateChar()
@@ -21,27 +20,15 @@ end
 updateChar()
 player.CharacterAdded:Connect(updateChar)
 
--- detect ball automatically
+-- find ball (leve)
 local function getBall()
 
-    local fastest
-    local speed = 0
-
-    for _,v in pairs(workspace:GetDescendants()) do
-        if v:IsA("BasePart") then
-
-            local vel = v.AssemblyLinearVelocity or v.Velocity
-            local mag = vel.Magnitude
-
-            if mag > speed and mag > 10 then
-                speed = mag
-                fastest = v
-            end
-
+    for _,v in pairs(workspace:GetChildren()) do
+        if v:IsA("BasePart") and v.Name:lower():find("ball") then
+            return v
         end
     end
 
-    return fastest
 end
 
 -- parry
@@ -53,37 +40,29 @@ local function parry()
 
 end
 
--- main loop
-RunService.RenderStepped:Connect(function()
+-- loop mais leve
+RunService.Heartbeat:Connect(function()
 
     if not hrp then return end
 
     local ball = getBall()
     if not ball then return end
 
-    local vel = ball.AssemblyLinearVelocity or ball.Velocity
+    local vel = ball.AssemblyLinearVelocity
     local speed = vel.Magnitude
 
-    if speed < 10 then return end
+    if speed < 5 then return end
 
-    -- predicted position
-    local predicted = ball.Position + vel * PREDICT_TIME
+    local predicted = ball.Position + vel * PREDICT
 
     local distance = (predicted - hrp.Position).Magnitude
 
-    -- dynamic range
     local range = BASE_DISTANCE + (speed * SPEED_MULT)
 
-    -- check direction
-    local toPlayer = (hrp.Position - ball.Position).Unit
-    local dot = vel.Unit:Dot(toPlayer)
+    local direction = (hrp.Position - ball.Position).Unit
+    local dot = vel.Unit:Dot(direction)
 
-    -- curve protection
-    if speed > 120 then
-        range = range + 8
-    end
-
-    if dot > 0.2 and distance <= range then
+    if dot > 0.25 and distance <= range then
         parry()
     end
 
