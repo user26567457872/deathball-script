@@ -74,11 +74,4 @@ end
 end
 
 end)
-print("SCRIPT DO GITHUB CARREGOU")
-
-local gui = Instance.new("ScreenGui", game.CoreGui)
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0,200,0,100)
-frame.Position = UDim2.new(0.4,0,0.4,0)
-frame.BackgroundColor3 = Color3.new(0,1,0)
+print("AUTO PARRY SCRIPT INICIADO"))
